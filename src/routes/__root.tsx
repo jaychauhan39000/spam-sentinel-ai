@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { Toaster } from "sonner";
+import { AppNav } from "@/components/AppNav";
 
 function NotFoundComponent() {
   return (
@@ -77,11 +79,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "SpamShield AI — Real-time Spam Email & SMS Detection" },
+      { name: "description", content: "SpamShield AI uses a real ML model (TF-IDF + Logistic Regression) plus AI fallback to detect spam, phishing, and scam SMS or email in real time." },
+      { name: "author", content: "SpamShield AI" },
+      { property: "og:title", content: "SpamShield AI — Real-time Spam Detection" },
+      { property: "og:description", content: "Paste any email or SMS and find out if it's spam in seconds, powered by a live ML model." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
@@ -105,7 +107,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="dark">
         {children}
         <Scripts />
       </body>
@@ -118,8 +120,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="min-h-screen flex flex-col bg-background text-foreground">
+        <AppNav />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <footer className="border-t border-border/60 py-6 text-center text-xs text-muted-foreground">
+          SpamShield AI · Hybrid ML + AI classifier · Built on Lovable
+        </footer>
+      </div>
+      <Toaster richColors closeButton theme="dark" />
     </QueryClientProvider>
   );
 }
