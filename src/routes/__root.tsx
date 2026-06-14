@@ -83,11 +83,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "SpamShield AI — Real-time Spam Email & SMS Detection" },
       { name: "description", content: "SpamShield AI uses a real ML model (TF-IDF + Logistic Regression) plus AI fallback to detect spam, phishing, and scam SMS or email in real time." },
       { name: "author", content: "SpamShield AI" },
-      { property: "og:title", content: "SpamShield AI — Real-time Spam Detection" },
-      { property: "og:description", content: "Paste any email or SMS and find out if it's spam in seconds, powered by a live ML model." },
+      { property: "og:title", content: "SpamShield AI — Real-time Spam Email & SMS Detection" },
+      { property: "og:description", content: "SpamShield AI uses a real ML model (TF-IDF + Logistic Regression) plus AI fallback to detect spam, phishing, and scam SMS or email in real time." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "SpamShield AI — Real-time Spam Email & SMS Detection" },
+      { name: "twitter:description", content: "SpamShield AI uses a real ML model (TF-IDF + Logistic Regression) plus AI fallback to detect spam, phishing, and scam SMS or email in real time." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/19df544b-1a9e-4803-8027-abd4c9b89cd2/id-preview-c39f3493--4c104437-1bcd-437f-bfd9-5853a7b19140.lovable.app-1781423162802.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/19df544b-1a9e-4803-8027-abd4c9b89cd2/id-preview-c39f3493--4c104437-1bcd-437f-bfd9-5853a7b19140.lovable.app-1781423162802.png" },
     ],
     links: [
       {
