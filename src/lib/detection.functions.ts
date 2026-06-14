@@ -3,6 +3,7 @@ import { z } from "zod";
 import { warmModel } from "./ml/tfidf-lr";
 import { DETECTION_LIMITS } from "./config";
 import { classifyHybrid, type ClassifyResponse } from "@/services/spam-detection";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 export type { ClassifyResponse } from "@/services/spam-detection";
 
@@ -19,15 +20,16 @@ const ClassifyInput = z.object({
 });
 
 export const classifyMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => ClassifyInput.parse(input))
-  .handler(async ({ data }): Promise<ClassifyResponse> => {
+  .handler(async ({ data, context }): Promise<ClassifyResponse> => {
     const message = data.message;
     const final = await classifyHybrid(message);
 
-    // 3) Log to Cloud (best-effort)
+    // Log to Cloud (best-effort). Use the user-scoped client so RLS applies.
     try {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("detections").insert({
+      await context.supabase.from("detections").insert({
+        user_id: context.userId,
         message: message.slice(0, MAX_MESSAGE_LENGTH),
         prediction: final.prediction,
         confidence: final.confidence,
@@ -67,12 +69,14 @@ const HistoryInput = z.object({
 });
 
 export const getHistory = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => HistoryInput.parse(input ?? {}))
-  .handler(async ({ data }): Promise<HistoryResponse> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let query = supabaseAdmin
+  .handler(async ({ data, context }): Promise<HistoryResponse> => {
+    const { supabase, userId } = context;
+    let query = supabase
       .from("detections")
       .select("*", { count: "exact" })
+      .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .range(data.offset, data.offset + data.limit - 1);
     if (data.search) {
@@ -81,13 +85,15 @@ export const getHistory = createServerFn({ method: "GET" })
     const { data: rows, error, count } = await query;
     if (error) throw new Error(error.message);
 
-    const { count: spam } = await supabaseAdmin
+    const { count: spam } = await supabase
       .from("detections")
       .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
       .eq("prediction", "Spam");
-    const { count: ham } = await supabaseAdmin
+    const { count: ham } = await supabase
       .from("detections")
       .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
       .eq("prediction", "Ham");
 
     return {
