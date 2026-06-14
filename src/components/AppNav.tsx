@@ -1,6 +1,10 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { Shield, ShieldAlert, BarChart3, Home } from "lucide-react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Shield, ShieldAlert, BarChart3, Home, LogIn, LogOut } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
 
 const links = [
   { to: "/", label: "Home", icon: Home },
@@ -10,6 +14,29 @@ const links = [
 
 export function AppNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getUser().then(({ data }) => {
+      if (active) setUser(data.user);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
+      setUser(session?.user ?? null);
+    });
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, []);
+
+  const onSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate({ to: "/" });
+  };
+
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-xl">
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
@@ -44,6 +71,21 @@ export function AppNav() {
               </li>
             );
           })}
+          <li className="ml-2">
+            {user ? (
+              <Button variant="outline" size="sm" onClick={onSignOut}>
+                <LogOut className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Sign out</span>
+              </Button>
+            ) : (
+              <Button asChild size="sm" className="bg-gradient-to-r from-primary to-accent text-primary-foreground">
+                <Link to="/auth">
+                  <LogIn className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Sign in</span>
+                </Link>
+              </Button>
+            )}
+          </li>
         </ul>
       </nav>
     </header>
