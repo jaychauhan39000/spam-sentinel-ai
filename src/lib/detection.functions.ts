@@ -1,135 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { classifyWithTfidfLr, warmModel } from "./ml/tfidf-lr";
+import { warmModel } from "./ml/tfidf-lr";
+import { DETECTION_LIMITS } from "./config";
+import { classifyHybrid, type ClassifyResponse } from "@/services/spam-detection";
+
+export type { ClassifyResponse } from "@/services/spam-detection";
 
 warmModel();
 
-const MAX_LEN = 5000;
+const { MAX_MESSAGE_LENGTH } = DETECTION_LIMITS;
 
 const ClassifyInput = z.object({
-  message: z.string().trim().min(1, "Message cannot be empty").max(MAX_LEN, `Max ${MAX_LEN} characters`),
+  message: z
+    .string()
+    .trim()
+    .min(1, "Message cannot be empty")
+    .max(MAX_MESSAGE_LENGTH, `Max ${MAX_MESSAGE_LENGTH} characters`),
 });
-
-export interface ClassifyResponse {
-  prediction: "Spam" | "Ham";
-  confidence: number; // 0-100
-  risk_level: "Low" | "Medium" | "High";
-  keywords: string[];
-  model: "tfidf-lr" | "tfidf-lr+ai";
-  reasoning?: string;
-}
-
-function riskLevel(prediction: "Spam" | "Ham", confidence: number): "Low" | "Medium" | "High" {
-  if (prediction === "Ham") return "Low";
-  if (confidence >= 85) return "High";
-  if (confidence >= 65) return "Medium";
-  return "Low";
-}
-
-async function aiClassify(message: string): Promise<{
-  prediction: "Spam" | "Ham";
-  confidence: number;
-  keywords: string[];
-  reasoning: string;
-} | null> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) return null;
-  try {
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": key,
-        "X-Lovable-AIG-SDK": "vercel-ai-sdk",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a spam/phishing classifier for email and SMS. Respond with ONLY valid JSON matching the schema. Be strict: marketing scams, prize-claim fraud, phishing links, fake delivery notices, account-verification scams are Spam. Personal/work messages are Ham.",
-          },
-          {
-            role: "user",
-            content: `Classify this message and return JSON:\n\nMessage: """${message}"""\n\nSchema: {"prediction":"Spam"|"Ham","confidence":0-100,"keywords":string[],"reasoning":short string}`,
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const raw = data?.choices?.[0]?.message?.content;
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    const pred = parsed.prediction === "Spam" ? "Spam" : "Ham";
-    const conf = Math.max(0, Math.min(100, Number(parsed.confidence) || 70));
-    const kws = Array.isArray(parsed.keywords) ? parsed.keywords.slice(0, 8).map(String) : [];
-    return {
-      prediction: pred,
-      confidence: conf,
-      keywords: kws,
-      reasoning: String(parsed.reasoning ?? ""),
-    };
-  } catch (err) {
-    console.error("[aiClassify] failed", err);
-    return null;
-  }
-}
 
 export const classifyMessage = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => ClassifyInput.parse(input))
   .handler(async ({ data }): Promise<ClassifyResponse> => {
     const message = data.message;
-
-    // 1) Run local TF-IDF + Logistic Regression
-    const local = classifyWithTfidfLr(message);
-    const localProb = local.probability;
-    const localConfidencePct = Math.round((localProb >= 0.5 ? localProb : 1 - localProb) * 1000) / 10;
-    const localMargin = Math.abs(localProb - 0.5);
-
-    let final: ClassifyResponse;
-
-    // 2) Escalate to Lovable AI when local model is uncertain (margin from 0.5 small)
-    const AI_ESCALATION_MARGIN = 0.2; // confidence below ~70%
-    if (localMargin < AI_ESCALATION_MARGIN) {
-      const ai = await aiClassify(message);
-      if (ai) {
-        const prediction = ai.prediction;
-        const confidence = Math.round(ai.confidence * 10) / 10;
-        final = {
-          prediction,
-          confidence,
-          risk_level: riskLevel(prediction, confidence),
-          keywords: ai.keywords.length ? ai.keywords : local.keywords,
-          model: "tfidf-lr+ai",
-          reasoning: ai.reasoning,
-        };
-      } else {
-        final = {
-          prediction: local.label,
-          confidence: localConfidencePct,
-          risk_level: riskLevel(local.label, localConfidencePct),
-          keywords: local.keywords,
-          model: "tfidf-lr",
-        };
-      }
-    } else {
-      final = {
-        prediction: local.label,
-        confidence: localConfidencePct,
-        risk_level: riskLevel(local.label, localConfidencePct),
-        keywords: local.keywords,
-        model: "tfidf-lr",
-      };
-    }
+    const final = await classifyHybrid(message);
 
     // 3) Log to Cloud (best-effort)
     try {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       await supabaseAdmin.from("detections").insert({
-        message: message.slice(0, MAX_LEN),
+        message: message.slice(0, MAX_MESSAGE_LENGTH),
         prediction: final.prediction,
         confidence: final.confidence,
         risk_level: final.risk_level,
