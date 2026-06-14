@@ -11,7 +11,7 @@ import { Card } from "@/components/ui/card";
 import { classifyMessage, type ClassifyResponse } from "@/lib/detection.functions";
 import { DETECTION_LIMITS, EXAMPLE_MESSAGES } from "@/lib/config";
 
-export const Route = createFileRoute("/detect")({
+export const Route = createFileRoute("/_authenticated/detect")({
   head: () => ({
     meta: [
       { title: "Detect — SpamShield AI" },

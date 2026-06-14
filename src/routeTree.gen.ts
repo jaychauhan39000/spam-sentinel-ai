@@ -9,15 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DetectRouteImport } from './routes/detect'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedDetectRouteImport } from './routes/_authenticated/detect'
 
-const DetectRoute = DetectRouteImport.update({
-  id: '/detect',
-  path: '/detect',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
@@ -28,46 +23,44 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDetectRoute = AuthenticatedDetectRouteImport.update({
+  id: '/_authenticated/detect',
+  path: '/detect',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/detect': typeof DetectRoute
+  '/detect': typeof AuthenticatedDetectRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/detect': typeof DetectRoute
+  '/detect': typeof AuthenticatedDetectRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
-  '/detect': typeof DetectRoute
+  '/_authenticated/detect': typeof AuthenticatedDetectRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths: '/' | '/analytics' | '/detect'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/analytics' | '/detect'
-  id: '__root__' | '/' | '/analytics' | '/detect'
+  id: '__root__' | '/' | '/analytics' | '/_authenticated/detect'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
-  DetectRoute: typeof DetectRoute
+  AuthenticatedDetectRoute: typeof AuthenticatedDetectRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/detect': {
-      id: '/detect'
-      path: '/detect'
-      fullPath: '/detect'
-      preLoaderRoute: typeof DetectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/analytics': {
       id: '/analytics'
       path: '/analytics'
@@ -82,14 +75,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/detect': {
+      id: '/_authenticated/detect'
+      path: '/detect'
+      fullPath: '/detect'
+      preLoaderRoute: typeof AuthenticatedDetectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
-  DetectRoute: DetectRoute,
+  AuthenticatedDetectRoute: AuthenticatedDetectRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
