@@ -24,6 +24,7 @@ export type Database = {
           model: string
           prediction: string
           risk_level: string
+          user_id: string
         }
         Insert: {
           confidence: number
@@ -34,6 +35,7 @@ export type Database = {
           model?: string
           prediction: string
           risk_level: string
+          user_id: string
         }
         Update: {
           confidence?: number
@@ -44,6 +46,7 @@ export type Database = {
           model?: string
           prediction?: string
           risk_level?: string
+          user_id?: string
         }
         Relationships: []
       }
