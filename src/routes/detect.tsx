@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { classifyMessage, type ClassifyResponse } from "@/lib/detection.functions";
+import { DETECTION_LIMITS, EXAMPLE_MESSAGES } from "@/lib/config";
 
 export const Route = createFileRoute("/detect")({
   head: () => ({
@@ -22,13 +23,7 @@ export const Route = createFileRoute("/detect")({
   component: DetectPage,
 });
 
-const MAX_LEN = 5000;
-const EXAMPLES = [
-  "Congratulations! You've won a $1000 Amazon gift card. Click here to claim: http://amzn-rewards.co",
-  "Hey, are we still on for dinner tomorrow at 7? Let me know.",
-  "URGENT: Your account has been compromised. Verify your identity at https://secure-verify.support immediately.",
-  "Final reminder: dentist appointment Monday 10am. Reply C to confirm.",
-];
+const MAX_LEN = DETECTION_LIMITS.MAX_MESSAGE_LENGTH;
 
 function DetectPage() {
   const router = useRouter();
@@ -90,7 +85,7 @@ function DetectPage() {
         <div className="mt-6 border-t border-border/60 pt-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Try an example</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {EXAMPLES.map((ex) => (
+            {EXAMPLE_MESSAGES.map((ex) => (
               <button key={ex} type="button" onClick={() => setText(ex)} className="text-left rounded-md border border-border/60 bg-background/40 p-3 text-xs text-muted-foreground hover:text-foreground hover:border-primary/50 transition">
                 {ex}
               </button>
